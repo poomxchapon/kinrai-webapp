@@ -604,8 +604,9 @@
         }
 
         function openMap(name, province) {
-            const query = encodeURIComponent(`${name} ${province}`);
-            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+            // ใช้ Google Maps Direction API เพื่อเปิดโหมดนำทางทันที
+            const destination = encodeURIComponent(`${name} ${province}`);
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}`, '_blank');
         }
     </script>
 
