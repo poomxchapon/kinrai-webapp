@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>กินไร - รวมร้านลับทั่วไทย</title>
+    <!-- Import Google Fonts: Mali -->
+    <link href="https://fonts.googleapis.com/css2?family=Mali:wght@300;500;700&display=swap" rel="stylesheet">
+    <!-- Import Leaflet CSS (สำหรับแผนที่) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    
+    <style>
+        :root {
+            --primary: #FF9A9E;
+            --secondary: #FECFEF;
+            --accent: #FBC2EB;
+            --text: #4A4A4A;
+            --bg: #FFF6F9;
+            --card-bg: #FFFFFF;
+            --map-border: #FFB7B2;
+        }
+
+        body {
+            font-family: 'Mali', cursive;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--primary);
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 0px #FFF, 4px 4px 0px rgba(0,0,0,0.1);
+            margin: 0;
+        }
+
+        p.subtitle {
+            font-size: 1.1rem;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        /* Controls Section */
+        .controls-container {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            width: 100%;
+            max-width: 800px;
+            border: 2px solid var(--secondary);
+        }
+
+        select {
+            font-family: 'Mali', cursive;
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 2px solid var(--primary);
+            background-color: white;
+            color: var(--text);
+            font-size: 1rem;
+            cursor: pointer;
+            outline: none;
+            min-width: 150px;
+        }
+
+        .action-btn {
+            background: linear-gradient(45deg, #FF9A9E, #FBC2EB);
+            border: none;
+            padding: 10px 25px;
+            border-radius: 50px;
+            color: white;
+            font-family: 'Mali', cursive;
+            font-size: 1rem;
+            font-weight: bold;
+            box-shadow: 0 5px 10px rgba(255, 154, 158, 0.4);
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+        }
+
+        .action-btn.secondary {
+            background: linear-gradient(45deg, #A0E7E5, #B4F8C8);
+            box-shadow: 0 5px 10px rgba(160, 231, 229, 0.4);
+            color: #00695C;
+        }
+
+        /* Map Container */
+        #map {
+            height: 400px;
+            width: 100%;
+            max-width: 1200px;
+            border-radius: 20px;
+            border: 4px solid var(--map-border);
+            margin-bottom: 30px;
+            z-index: 1; /* Ensure map stays below fixed elements if any */
+        }
+
+        .status {
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: var(--primary);
+            text-align: center;
+        }
+
+        /* Card Container */
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        /* Card Style */
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            border: 3px solid #FFF;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s, border-color 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--secondary);
+            z-index: 10;
+        }
+
+        .card-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #FFE5B4;
+            color: #E67E22;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .card h3 {
+            margin: 0 0 5px 0;
+            color: var(--primary);
+            font-size: 1.3rem;
+        }
+
+        .card .location {
+            color: #999;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .card .desc {
+            font-size: 0.95rem;
+            line-height: 1.4;
+            color: #666;
+            margin-bottom: 15px;
+            background: #F9F9F9;
+            padding: 10px;
+            border-radius: 10px;
+            flex-grow: 1;
+        }
+
+        .nav-btn {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background-color: #A0E7E5;
+            color: #00695C;
+            text-decoration: none;
+            padding: 10px 0;
+            border-radius: 12px;
+            font-weight: bold;
+            margin-top: auto;
+            transition: background 0.2s;
+            cursor: pointer;
+            border: none;
+            font-family: 'Mali', cursive;
+            font-size: 1rem;
+        }
+
+        .nav-btn:hover {
+            background-color: #7CD1D0;
+        }
+
+        .distance-tag {
+            font-size: 0.8rem;
+            color: #FF9A9E;
+            margin-left: auto;
+            font-weight: bold;
+        }
+
+        /* Leaflet Popup Style Customization */
+        .leaflet-popup-content-wrapper {
+            border-radius: 15px;
+            font-family: 'Mali', cursive;
+        }
+        .leaflet-popup-content b {
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; }
+            .card-container { grid-template-columns: 1fr; }
+            .controls-container { flex-direction: column; align-items: stretch; }
+            #map { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🍽️ กินไร</h1>
+        <p class="subtitle">รวมร้านลับ 77 จังหวัด ฉบับคนพื้นที่</p>
+    </header>
+
+    <div class="controls-container">
+        <select id="regionFilter" onchange="updateProvinceFilter()">
+            <option value="">🗺️ ทุกภาค</option>
+            <option value="เหนือ">ภาคเหนือ</option>
+            <option value="อีสาน">ภาคอีสาน</option>
+            <option value="กลาง">ภาคกลาง</option>
+            <option value="ตะวันออก">ภาคตะวันออก</option>
+            <option value="ตะวันตก">ภาคตะวันตก</option>
+            <option value="ใต้">ภาคใต้</option>
+        </select>
+        
+        <select id="provinceFilter" onchange="applyFilters()">
+            <option value="">📍 ทุกจังหวัด</option>
+        </select>
+
+        <button class="action-btn" onclick="getLocation()">
+            📡 ร้านใกล้ฉัน
+        </button>
+        
+        <button class="action-btn secondary" onclick="resetFilters()">
+            🔄 รีเซ็ต
+        </button>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div id="map"></div>
+
+    <div id="results" class="card-container">
+        <!-- Cards will appear here -->
+    </div>
+
+    <!-- Import Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        // --- 1. DATA CONFIGURATION ---
+
+        // ข้อมูลร้านอาหาร (คงเดิม + เพิ่ม Region ใน Logic)
+        const database = [
+            // --- ภาคเหนือ ---
+            { name: "ครัวหลองข้าว By Eve's Cuisine", province: "เชียงใหม่", desc: "ร้านลับกลางทุ่งนา เมนูเด็ด 'อ๋องปูนา' ครีมมี่ และ 'จิ้นส้มหมกไข่'" },
+            { name: "เอกฉันท์ (Ekkachan)", province: "เชียงใหม่", desc: "อาหารไทยโบราณ เครื่องแกงรสจัดจ้าน เหมาะพาครอบครัวมาทาน" },
+            { name: "Graph Cafe", province: "เชียงใหม่", desc: "คาเฟ่ในบ้านเก่าข้างวัด บรรยากาศเงียบสงบ กาแฟดี" },
+            { name: "เฮือนม่วนใจ๋", province: "เชียงใหม่", desc: "Michelin Bib Gourmand ออเดิร์ฟเมืองครบรสชาติล้านนา" },
+            { name: "Lalitta Café", province: "เชียงราย", desc: "คาเฟ่ป่าหิมพานต์ มีน้ำตกและไอหมอก สวยเหมือนหลุดเข้าเทพนิยาย" },
+            { name: "มาลองเต๊อะ", province: "เชียงราย", desc: "ตั้งอยู่ในขัวศิลปะ เมนูเด็ด 'ยำสาวดอย' และ 'ลาบหมูคั่ว' มะแขว่น" },
+            { name: "หลู่ลำ", province: "เชียงราย", desc: "ร้านริมแม่น้ำกก อาหารเหนือรสชาติต้นตำรับ Authentic" },
+            { name: "แคริป ฝรั่งเศส กาดกองต้า", province: "ลำปาง", desc: "ร้านรถเข็นตำนาน เครปไส้แอปเปิ้ลทำเอง" },
+            { name: "ร้านจันผา", province: "ลำพูน", desc: "ร้านลับปากต่อปาก เมนู 'กุ้งเมืองทอด' และ 'แกงฮังเล'" },
+            { name: "โจ๊ก หละปูน", province: "ลำพูน", desc: "อาหารเช้าขวัญใจคนท้องถิ่น ต้มเลือดหมูน้ำซุปกลมกล่อม" },
+            { name: "Sippin Cafe", province: "พะเยา", desc: "ร้านกาแฟ Homey ลับๆ เหมือนมาบ้านเพื่อน" },
+            { name: "Mata Old Town Cafe", province: "น่าน", desc: "คาเฟ่วินเทจย่านเมืองเก่า กาแฟคั่วเอง" },
+            { name: "มุมลับดอยภูคา", province: "น่าน", desc: "จุดแวะพักริมทางวิวหลักล้าน จิบกาแฟชมเขา" },
+            { name: "Akipu Coffee", province: "แม่ฮ่องสอน", desc: "กาแฟแห่งขุนเขา จุดชมทะเลหมอก" },
+            { name: "ร้านคำปา", province: "แพร่", desc: "ขนมจีนน้ำย้อยราคาหลักสิบ แต่รสชาติเกินคุ้ม" },
+            { name: "ข้าวพันผัก (ร้านป้าสอง)", province: "อุตรดิตถ์", desc: "อาหารพื้นเมืองลับแล น้ำจิ้มรสเด็ด" },
+
+            // --- ภาคอีสาน ---
+            { name: "เป็นลาว (PenLaos)", province: "นครราชสีมา", desc: "ร้านตำนานเขาใหญ่ ส้มตำรสแซ่บที่ดังไกลไปต่างแดน" },
+            { name: "เข่า (Jum Khao)", province: "นครราชสีมา", desc: "มิชลินไกด์เขาใหญ่ เมนูเนื้อผัดซอสและตำหลวงพระบาง" },
+            { name: "Krua Kampan", province: "นครราชสีมา", desc: "บรรยากาศบ้านไม้เก่าแก่ รสชาติอีสานแท้ๆ" },
+            { name: "โจ๊ก จั๊บ ต้มเส้น บัตรคิว", province: "ขอนแก่น", desc: "ตำนานรอบดึก ต้มเส้นใส่ตีนไก่ ต้องรอคิว" },
+            { name: "กินกันหน่อย (Delivery)", province: "ขอนแก่น", desc: "ร้านลับไม่มีหน้าร้าน ข้าวไก่ทอดครีมมะนาวเด็ดมาก" },
+            { name: "Samuay & Sons", province: "อุดรธานี", desc: "Fine Dining อีสานร่วมสมัย โดยเชฟยอดฝีมือ" },
+            { name: "Madam Pahtehh", province: "อุดรธานี", desc: "อาหารเช้าเวียดนาม-ฝรั่งเศส สตูว์ลิ้นวัวต้องลอง" },
+            { name: "ร้านกินเส้น", province: "เลย", desc: "ก๋วยเตี๋ยวเรือหม้อดิน ทีเด็ดคือรสหม่าล่า" },
+            { name: "ร้านภูวิ", province: "เลย", desc: "ร้านบรรยากาศชิลล์ยามเย็น มีดนตรีสด" },
+            { name: "ครัวยายบุญ", province: "หนองบัวลำภู", desc: "ร้านลับในซอยลึก เชฟทำคนเดียว ต้องจอง" },
+            { name: "แจ่วฮ้อนท่าขอนยาง", province: "มหาสารคาม", desc: "ตำนานริมน้ำชีของเด็ก มมส." },
+            { name: "ญ้อภูไท", province: "มหาสารคาม", desc: "อาหารพื้นเมืองชาวญ้อ บรรยากาศร่มรื่น" },
+            { name: "Amuse Cafe'", province: "กาฬสินธุ์", desc: "มีต้มแซ่บไก่ใส่กัญชาและขาหมูเยอรมัน" },
+            { name: "ส้มตำจินดา", province: "อุบลราชธานี", desc: "Michelin Bib Gourmand ส้มตำถาดระดับอินเตอร์" },
+            { name: "แก้วไก่กรอบ", province: "ยโสธร", desc: "ต้นตำรับไก่ย่างหนังกรอบ" },
+            { name: "ส้มตำยายเพิง", province: "อำนาจเจริญ", desc: "ส้มตำเจ้าดัง เผ็ดแซ่บถึงใจ" },
+            { name: "มาตาคูซีน", province: "ชัยภูมิ", desc: "ร้านหรูเสิร์ฟอาหารไทย-ยุโรป มีไวน์ลิสต์" },
+            { name: "ราดหน้าเฮียควง", province: "ศรีสะเกษ", desc: "ราดหน้าตำนานริมทางรถไฟ หมูนุ่มมาก" },
+
+            // --- ภาคกลาง ---
+            { name: "ก.พานิช", province: "กรุงเทพมหานคร", desc: "ข้าวเหนียวมูนระดับมิชลิน คู่มะม่วงน้ำดอกไม้" },
+            { name: "แอน ท่าดินแดง", province: "กรุงเทพมหานคร", desc: "กุ้งทอดกระเทียม ปลากะพงทอดน้ำปลา วัตถุดิบสดใหม่" },
+            { name: "เตี๋ยวชมคลอง", province: "นนทบุรี", desc: "ก๋วยเตี๋ยวเรือลับๆ ริมคลองบางใหญ่ บรรยากาศย้อนยุค" },
+            { name: "Happy Farm Family", province: "ปทุมธานี", desc: "ร้านริมน้ำเจ้าพระยา พิซซ่าโฮมเมด และ Pet-friendly" },
+            { name: "กุ้งอบภูเขาไฟ", province: "นครปฐม", desc: "กุ้งอบทรงภูเขาไฟจุดไฟโชว์อลังการ" },
+            { name: "ครัวคุณตุ่ม", province: "สมุทรสาคร", desc: "อาหารทะเลมหาชัย สดมาก ข้าวผัดปูเด็ด" },
+            { name: "บ้านภูคำ", province: "พระนครศรีอยุธยา", desc: "อาหารไทยรสต้นตำรับ บรรยากาศบ้านสวน (Michelin Bib)" },
+            { name: "นิรมิต", province: "อ่างทอง", desc: "ร้านริมน้ำน้อย อาหารไทยโบราณ แกงคั่วหอยขม" },
+            { name: "ร้านอาหารรำพึง", province: "สิงห์บุรี", desc: "อาหารป่ารสจัดจ้าน เครื่องสมุนไพรแน่น" },
+            { name: "ลาบเป็ดชัยนาท", province: "ชัยนาท", desc: "อาหารอีสานรสเด็ด บริการรวดเร็ว" },
+            { name: "ต้อม แคมป่าสัก", province: "สระบุรี", desc: "ร้านริมน้ำป่าสัก ปลาทับทิมสามรสอร่อย" },
+            { name: "เนื้อทอง ต้าซีกวา", province: "ลพบุรี", desc: "ก๋วยเตี๋ยวเนื้อวากิว ใกล้ประตูชัย" },
+            { name: "เสบียงนา", province: "สุพรรณบุรี", desc: "ร้านกลางทุ่งนา ลมเย็น อาหารปลาแม่น้ำ" },
+            { name: "ครัวลุงนำ", province: "นครสวรรค์", desc: "ร้านสไตล์เพื่อชีวิต อาหารป่ารสเผ็ดร้อน เริ่มต้น 40 บาท" },
+            { name: "กินปลา ทุ่งเศรษฐี", province: "กำแพงเพชร", desc: "เมนูปลาแม่น้ำสดๆ การันตีคุณภาพ" },
+            { name: "ก๋วยเตี๋ยวห้อยขา (ริมน้ำน่าน)", province: "พิษณุโลก", desc: "ต้นตำรับนั่งห้อยขากินก๋วยเตี๋ยว" },
+            { name: "บ้านชานวัชร", province: "สุโขทัย", desc: "อาหารไทยโบราณในบ้านไม้เก่า" },
+
+            // --- ภาคตะวันออก ---
+            { name: "ครัวลุงติ้ว", province: "ชลบุรี", desc: "ร้านตามสั่งบนเกาะล้าน ราคาถูกมาก ผัดไทยกุ้งสด" },
+            { name: "Chicken Bar", province: "ชลบุรี", desc: "ไก่ทอดโฮมเมดบางแสน ฟีลกินข้าวบ้านเพื่อน" },
+            { name: "Wooden Spoon", province: "ระยอง", desc: "ร้านลับกลางเมืองระยอง สลัดแอปเปิ้ลคาราเมล" },
+            { name: "ร้านแดกเถอะนัวร์", province: "ระยอง", desc: "ข้าวคลุกปูเนื้อเน้นๆ" },
+            { name: "ครัวลุงเชย", province: "จันทบุรี", desc: "แกงหมูชะมวง รสเอกลักษณ์จันทบุรี" },
+            { name: "I SEA GLAMPING", province: "จันทบุรี", desc: "ร้านริมทะเลสไตล์แคมป์ปิ้ง สายคอนเทนต์ต้องมา" },
+            { name: "ร้านอาหารป่า แสนตุ้ง", province: "ตราด", desc: "อาหารป่ารสจัดจ้าน (สาขาชลบุรีแต่เป็นตัวแทนรสชาติตราด)" },
+            { name: "แม่เอียดปลาส้มแปดริ้ว", province: "ฉะเชิงเทรา", desc: "ปลาส้มของดีแปดริ้ว" },
+            { name: "Sweet's Time", province: "นครนายก", desc: "อาหารไทยรสจัด กะหล่ำปลีผัดปลาหมึกแห้ง" },
+            { name: "บ้านบิ๊กหรั่ง", province: "นครนายก", desc: "ร้านริมทุ่งนา ปลาช่อนอบโอ่งทีเด็ด" },
+            { name: "ยายเต็ม", province: "สระแก้ว", desc: "อาหารเวียดนามสไตล์วินเทจ รางวัล Wongnai" },
+            { name: "ครัวต้นคูณ", province: "ปราจีนบุรี", desc: "อาหารไทย-ฝรั่ง ราคาย่อมเยา" },
+
+            // --- ภาคตะวันตก ---
+            { name: "ME Kitchen and Bar", province: "กาญจนบุรี", desc: "ริมแม่น้ำ สปาเก็ตตี้น้ำตกคอหมูย่าง" },
+            { name: "โอ่งข้าวโอ่งน้ำ", province: "ราชบุรี", desc: "ตึกทรงโอ่งมังกร อาหารไทยรสชาติดี" },
+            { name: "Morning Glory", province: "ราชบุรี", desc: "เบเกอรี่กลางหุบเขา สวนผึ้ง" },
+            { name: "ครัวห้วยทราย", province: "เพชรบุรี", desc: "Michelin Bib แกงคั่วใบชะครามปู" },
+            { name: "พวงเพชร", province: "เพชรบุรี", desc: "ปลาดุกทะเลผัดฉ่า รสร้อนแรง" },
+            { name: "Air Space Hua Hin", province: "ประจวบคีรีขันธ์", desc: "คาเฟ่เรือนกระจกธีมการบิน" },
+            { name: "ครัวบ้านพ่อ", province: "ประจวบคีรีขันธ์", desc: "ร้านในวนอุทยาน วิวหลักล้าน ราคาหลักร้อย" },
+            { name: "ร้านชิวกิมเลิศรส", province: "ตาก", desc: "สุกี้โบราณ น้ำจิ้มเต้าหู้ยี้สูตรเด็ด" },
+            { name: "วิวดอย คอฟฟี่โฮม", province: "ตาก", desc: "ร้านกาแฟวิวสวยบนดอยแม่สอด" },
+
+            // --- ภาคใต้ ---
+            { name: "โกเบนซ์ข้าวต้มแห้ง", province: "ภูเก็ต", desc: "ตำนานมิชลิน ข้าวต้มแห้งเครื่องแน่น คิวยาว" },
+            { name: "ตู้กับข้าว", province: "ภูเก็ต", desc: "อาหารพื้นเมืองในตึกชิโนโปรตุกีส แกงปูใบชะพลู" },
+            { name: "ฮกกี่เหลา", province: "พังงา", desc: "ปูนิ่มทอดกระเทียม อร่อยระดับมิชลิน" },
+            { name: "ร้านโกอ้อย", province: "กระบี่", desc: "ขนมจีนน้ำยาปูคู่ไก่ทอด" },
+            { name: "ไก่ทอดวานีต้า", province: "สงขลา", desc: "ไก่ทอดหาดใหญ่แท้ๆ หอมเจียวล้น" },
+            { name: "Long Hua (หลงฮัว)", province: "สงขลา", desc: "หม่าล่าหาดใหญ่ น้ำซุปเข้มข้น" },
+            { name: "ฟาร์มวินเทจ", province: "พัทลุง", desc: "ร้านลับในสวนเกษตรอินทรีย์ สลัดผักสด" },
+            { name: "ร้านโก", province: "นครศรีธรรมราช", desc: "กาแฟโบราณและติ่มซำ บักกุ๊ดเต๋" },
+            { name: "จันทร์สว่างรีสอร์ท", province: "ชุมพร", desc: "ร้านซ่อนในรีสอร์ท ยำถั่วพูรสเด็ด" },
+            { name: "The Kraken", province: "ระนอง", desc: "อาหารฟิวชั่น ไทย-ตะวันตก บรรยากาศโฮมมี่" },
+            { name: "ภูณิศา", province: "สุราษฎร์ธานี", desc: "ร้านบนเขาท่าเพชร วิวแม่น้ำตาปี" },
+            { name: "ร้านอาหารหน้าเริน", province: "ยะลา", desc: "แกงส้มกุ้งหน่อไม้ดอง รสใต้แท้ๆ" },
+            { name: "ครัวอุมมี", province: "ยะลา", desc: "ร้านฮาลาลลับๆ บรรยากาศเป็นกันเอง" },
+            { name: "โรตี เดอ ฟอร์เรส", province: "ปัตตานี", desc: "โรตีและชาชักสมัยใหม่ วัยรุ่นชอบ" },
+            { name: "มิตรไมตรี", province: "ปัตตานี", desc: "อาหารหลากหลาย บริการประทับใจ" },
+            { name: "ร้านมังกรทอง", province: "นราธิวาส", desc: "ติ่มซำและข้าวยำปักษ์ใต้คู่เมือง" }
+        ];
+
+        // Mapping ภาค -> จังหวัด
+        const regionMap = {
+            "เหนือ": ["เชียงใหม่", "เชียงราย", "ลำปาง", "ลำพูน", "แม่ฮ่องสอน", "น่าน", "พะเยา", "แพร่", "อุตรดิตถ์"],
+            "อีสาน": ["กาฬสินธุ์", "ขอนแก่น", "ชัยภูมิ", "นครพนม", "นครราชสีมา", "บึงกาฬ", "บุรีรัมย์", "มหาสารคาม", "มุกดาหาร", "ยโสธร", "ร้อยเอ็ด", "เลย", "สกลนคร", "สุรินทร์", "ศรีสะเกษ", "หนองคาย", "หนองบัวลำภู", "อุดรธานี", "อุบลราชธานี", "อำนาจเจริญ"],
+            "กลาง": ["กรุงเทพมหานคร", "กำแพงเพชร", "ชัยนาท", "นครนายก", "นครปฐม", "นครสวรรค์", "นนทบุรี", "ปทุมธานี", "พระนครศรีอยุธยา", "พิจิตร", "พิษณุโลก", "เพชรบูรณ์", "ลพบุรี", "สมุทรปราการ", "สมุทรสงคราม", "สมุทรสาคร", "สระบุรี", "สิงห์บุรี", "สุโขทัย", "สุพรรณบุรี", "อ่างทอง", "อุทัยธานี"],
+            "ตะวันออก": ["จันทบุรี", "ฉะเชิงเทรา", "ชลบุรี", "ตราด", "ปราจีนบุรี", "ระยอง", "สระแก้ว"],
+            "ตะวันตก": ["กาญจนบุรี", "ตาก", "ประจวบคีรีขันธ์", "เพชรบุรี", "ราชบุรี"],
+            "ใต้": ["กระบี่", "ชุมพร", "ตรัง", "นครศรีธรรมราช", "นราธิวาส", "ปัตตานี", "พังงา", "พัทลุง", "ภูเก็ต", "ยะลา", "ระนอง", "สงขลา", "สตูล", "สุราษฎร์ธานี"]
+        };
+
+        // พิกัดใจกลางจังหวัด
+        const provinceCoords = {
+            "เชียงใหม่": {lat: 18.7883, lng: 98.9853}, "เชียงราย": {lat: 19.9105, lng: 99.8406}, "ลำปาง": {lat: 18.2888, lng: 99.4928}, "ลำพูน": {lat: 18.5748, lng: 99.0087}, "แม่ฮ่องสอน": {lat: 19.3020, lng: 97.9654}, "น่าน": {lat: 18.7832, lng: 100.7782}, "พะเยา": {lat: 19.1662, lng: 99.9018}, "แพร่": {lat: 18.1446, lng: 100.1403}, "อุตรดิตถ์": {lat: 17.6167, lng: 100.0950},
+            "กาฬสินธุ์": {lat: 16.4328, lng: 103.5066}, "ขอนแก่น": {lat: 16.4322, lng: 102.8236}, "ชัยภูมิ": {lat: 15.8105, lng: 102.0297}, "นครพนม": {lat: 17.40, lng: 104.78}, "นครราชสีมา": {lat: 14.9799, lng: 102.0978}, "บึงกาฬ": {lat: 18.36, lng: 103.65}, "บุรีรัมย์": {lat: 14.99, lng: 103.10}, "มหาสารคาม": {lat: 16.1856, lng: 103.3025}, "มุกดาหาร": {lat: 16.54, lng: 104.72}, "ยโสธร": {lat: 15.7924, lng: 104.1451}, "ร้อยเอ็ด": {lat: 16.05, lng: 103.65}, "เลย": {lat: 17.4860, lng: 101.7223}, "สกลนคร": {lat: 17.16, lng: 104.15}, "สุรินทร์": {lat: 14.88, lng: 103.49}, "ศรีสะเกษ": {lat: 15.1186, lng: 104.3220}, "หนองคาย": {lat: 17.88, lng: 102.74}, "หนองบัวลำภู": {lat: 17.2218, lng: 102.4260}, "อุดรธานี": {lat: 17.4123, lng: 102.7872}, "อุบลราชธานี": {lat: 15.2448, lng: 104.8473}, "อำนาจเจริญ": {lat: 15.8617, lng: 104.6200},
+            "กรุงเทพมหานคร": {lat: 13.7563, lng: 100.5018}, "กำแพงเพชร": {lat: 16.4828, lng: 99.5227}, "ชัยนาท": {lat: 15.1852, lng: 100.1253}, "นครนายก": {lat: 14.2069, lng: 101.2131}, "นครปฐม": {lat: 13.8198, lng: 100.0602}, "นครสวรรค์": {lat: 15.7078, lng: 100.1372}, "นนทบุรี": {lat: 13.8591, lng: 100.5217}, "ปทุมธานี": {lat: 14.0208, lng: 100.5250}, "พระนครศรีอยุธยา": {lat: 14.3585, lng: 100.5762}, "พิจิตร": {lat: 16.44, lng: 100.35}, "พิษณุโลก": {lat: 16.8211, lng: 100.2659}, "เพชรบูรณ์": {lat: 16.42, lng: 101.15}, "ลพบุรี": {lat: 14.7995, lng: 100.6533}, "สมุทรปราการ": {lat: 13.59, lng: 100.59}, "สมุทรสงคราม": {lat: 13.40, lng: 100.00}, "สมุทรสาคร": {lat: 13.5475, lng: 100.2736}, "สระบุรี": {lat: 14.5289, lng: 100.9101}, "สิงห์บุรี": {lat: 14.8936, lng: 100.4011}, "สุโขทัย": {lat: 17.0044, lng: 99.8264}, "สุพรรณบุรี": {lat: 14.4745, lng: 100.1177}, "อ่างทอง": {lat: 14.5896, lng: 100.4551}, "อุทัยธานี": {lat: 15.38, lng: 100.02},
+            "จันทบุรี": {lat: 12.6114, lng: 102.1039}, "ฉะเชิงเทรา": {lat: 13.6904, lng: 101.0780}, "ชลบุรี": {lat: 13.3611, lng: 100.9847}, "ตราด": {lat: 12.2428, lng: 102.5175}, "ปราจีนบุรี": {lat: 14.0509, lng: 101.3680}, "ระยอง": {lat: 12.6815, lng: 101.2816}, "สระแก้ว": {lat: 13.8141, lng: 102.0722},
+            "กาญจนบุรี": {lat: 14.0225, lng: 99.5332}, "ตาก": {lat: 16.8837, lng: 99.1175}, "ประจวบคีรีขันธ์": {lat: 11.8080, lng: 99.7957}, "เพชรบุรี": {lat: 13.1118, lng: 99.9405}, "ราชบุรี": {lat: 13.5358, lng: 99.8166},
+            "กระบี่": {lat: 8.0855, lng: 98.9063}, "ชุมพร": {lat: 10.4930, lng: 99.1800}, "ตรัง": {lat: 7.56, lng: 99.60}, "นครศรีธรรมราช": {lat: 8.4333, lng: 99.9667}, "นราธิวาส": {lat: 6.4255, lng: 101.8253}, "ปัตตานี": {lat: 6.8677, lng: 101.2501}, "พังงา": {lat: 8.4411, lng: 98.5255}, "พัทลุง": {lat: 7.6167, lng: 100.0717}, "ภูเก็ต": {lat: 7.8804, lng: 98.3923}, "ยะลา": {lat: 6.5414, lng: 101.2803}, "ระนอง": {lat: 9.9658, lng: 98.6348}, "สงขลา": {lat: 7.1756, lng: 100.6143}, "สตูล": {lat: 6.62, lng: 100.06}, "สุราษฎร์ธานี": {lat: 9.1412, lng: 99.3242}
+        };
+
+        // --- 2. MAP SETUP ---
+        var map = L.map('map').setView([13.7563, 100.5018], 6); // เริ่มต้นที่กรุงเทพ
+
+        // ใช้แผนที่ OpenStreetMap (ฟรี)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var markersLayer = new L.LayerGroup();
+        markersLayer.addTo(map);
+
+        // --- 3. LOGIC FUNCTIONS ---
+
+        const resultsDiv = document.getElementById("results");
+        const statusDiv = document.getElementById("status");
+        const regionFilter = document.getElementById("regionFilter");
+        const provinceFilter = document.getElementById("provinceFilter");
+
+        // Helper: หาว่าจังหวัดอยู่ภาคไหน
+        function getRegionByProvince(province) {
+            for (const [region, provinces] of Object.entries(regionMap)) {
+                if (provinces.includes(province)) return region;
+            }
+            return "";
+        }
+
+        // เพิ่มข้อมูล Region เข้าไปใน Database
+        database.forEach(item => {
+            item.region = getRegionByProvince(item.province);
+        });
+
+        // โหลดครั้งแรก
+        renderCards(database);
+        updateMap(database);
+
+        function updateProvinceFilter() {
+            const selectedRegion = regionFilter.value;
+            provinceFilter.innerHTML = '<option value="">📍 ทุกจังหวัด</option>';
+
+            let provincesToShow = [];
+            if (selectedRegion) {
+                provincesToShow = regionMap[selectedRegion];
+            } else {
+                // ถ้าไม่เลือกภาค ให้โชว์ทุกจังหวัด (เรียงตามชื่อ)
+                provincesToShow = Object.values(regionMap).flat().sort();
+            }
+
+            provincesToShow.forEach(prov => {
+                const option = document.createElement("option");
+                option.value = prov;
+                option.textContent = prov;
+                provinceFilter.appendChild(option);
+            });
+
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const r = regionFilter.value;
+            const p = provinceFilter.value;
+
+            let filtered = database;
+
+            if (r) filtered = filtered.filter(item => item.region === r);
+            if (p) filtered = filtered.filter(item => item.province === p);
+
+            renderCards(filtered);
+            updateMap(filtered);
+
+            // Zoom map to selected province/region area if possible
+            if (p && provinceCoords[p]) {
+                map.flyTo([provinceCoords[p].lat, provinceCoords[p].lng], 10);
+            } else if (r) {
+                // Zoom out a bit if only region selected
+                map.flyTo([13.7563, 100.5018], 6); 
+            }
+        }
+
+        function resetFilters() {
+            regionFilter.value = "";
+            updateProvinceFilter(); // จะเคลียร์จังหวัดด้วย
+            applyFilters();
+            map.flyTo([13.7563, 100.5018], 6);
+            statusDiv.textContent = "";
+        }
+
+        function getLocation() {
+            statusDiv.textContent = "กำลังค้นหาตำแหน่งของคุณ... 🛰️";
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError);
+            } else {
+                statusDiv.textContent = "Geolocation is not supported by this browser.";
+            }
+        }
+
+        function showPosition(position) {
+            const lat1 = position.coords.latitude;
+            const lon1 = position.coords.longitude;
+            
+            statusDiv.textContent = "เจอตำแหน่งแล้ว! กำลังเรียงลำดับร้านใกล้คุณ... 🚀";
+
+            // Add User Marker
+            L.marker([lat1, lon1]).addTo(map)
+                .bindPopup("<b>🏠 คุณอยู่ที่นี่</b>").openPopup();
+            map.flyTo([lat1, lon1], 9);
+
+            // Sort Data
+            const sortedData = [...database].map(item => {
+                const coords = provinceCoords[item.province];
+                let dist = 9999;
+                if (coords) {
+                    dist = calculateDistance(lat1, lon1, coords.lat, coords.lng);
+                }
+                return { ...item, distance: dist };
+            }).sort((a, b) => a.distance - b.distance);
+
+            // รีเซ็ต Filter เพื่อโชว์ผลลัพธ์ที่ Sort แล้วทั้งหมด
+            regionFilter.value = "";
+            updateProvinceFilter();
+            renderCards(sortedData, true);
+        }
+
+        function showError(error) {
+            statusDiv.textContent = "ไม่สามารถระบุตำแหน่งได้ (ลองกดอนุญาตดูนะ!)";
+        }
+
+        // Haversine Formula
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // Render Cards
+        function renderCards(data, showDistance = false) {
+            resultsDiv.innerHTML = "";
+            if (data.length === 0) {
+                resultsDiv.innerHTML = "<div style='width:100%; text-align:center; color:#888;'>ไม่พบข้อมูลร้านค้าในหมวดที่เลือก</div>";
+                return;
+            }
+
+            data.forEach(item => {
+                const card = document.createElement("div");
+                card.className = "card";
+                
+                let distHtml = "";
+                if (showDistance && item.distance !== undefined && item.distance < 9000) {
+                    distHtml = `<span class="distance-tag">📍 ห่าง ~${item.distance.toFixed(0)} กม.</span>`;
+                }
+
+                card.innerHTML = `
+                    <div class="card-badge">${item.province}</div>
+                    <h3>${item.name}</h3>
+                    <div class="location">
+                        <span>🗺️ ${item.province}</span>
+                        ${distHtml}
+                    </div>
+                    <div class="desc">${item.desc}</div>
+                    <button class="nav-btn" onclick="openMap('${item.name}', '${item.province}')">
+                        🚀 ไปร้านนี้เลย!
+                    </button>
+                `;
+                resultsDiv.appendChild(card);
+            });
+        }
+
+        // Update Map Markers
+        function updateMap(data) {
+            markersLayer.clearLayers();
+            
+            data.forEach(item => {
+                const coords = provinceCoords[item.province];
+                if (coords) {
+                    // Jitter: Add random offset so markers don't stack exactly on top of each other
+                    // 0.05 deg is roughly 5km
+                    const jitterLat = coords.lat + (Math.random() - 0.5) * 0.08; 
+                    const jitterLng = coords.lng + (Math.random() - 0.5) * 0.08;
+
+                    const marker = L.marker([jitterLat, jitterLng]);
+                    
+                    const popupContent = `
+                        <b>${item.name}</b><br>
+                        ${item.province}<br>
+                        <a href="#" onclick="openMap('${item.name}', '${item.province}')">นำทางไปที่นี่</a>
+                    `;
+                    
+                    marker.bindPopup(popupContent);
+                    markersLayer.addLayer(marker);
+                }
+            });
+        }
+
+        function openMap(name, province) {
+            const query = encodeURIComponent(`${name} ${province}`);
+            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+        }
+    </script>
+
+</body>
+</html>
+
